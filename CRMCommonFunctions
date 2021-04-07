@@ -1,0 +1,555 @@
+using Microsoft.Crm.Sdk.Messages;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Query;
+using System;
+using System.IO;
+using System.Net;
+
+namespace Common_Functions
+{
+
+    public class CommonFunctions
+    {
+
+        
+        /// <summary>
+        /// This method is used to fetch a global optionset value based on an optionset text.
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <param name="attributeName"></param>
+        /// <param name="optionsetText"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetGlobalOptionSetValue(string attributeName, string optionsetText, IOrganizationService service)
+        {
+            
+            try
+            {
+                string optionSetValue = null;
+                RetrieveOptionSetRequest retrieveOptionSetRequest = new RetrieveOptionSetRequest();
+                retrieveOptionSetRequest.Name = attributeName;
+                retrieveOptionSetRequest.RetrieveAsIfPublished = true;
+                RetrieveOptionSetResponse retrieveOptionSetResponse =
+                  (RetrieveOptionSetResponse)service.Execute(retrieveOptionSetRequest);
+                OptionSetMetadata picklistAttributeMetadata =
+                  (OptionSetMetadata)retrieveOptionSetResponse.OptionSetMetadata;
+                OptionMetadataCollection optionsetMetadata = picklistAttributeMetadata.Options;
+                foreach (OptionMetadata optionMetadata in optionsetMetadata)
+                {
+                    if (optionMetadata.Label.UserLocalizedLabel.Label.ToLower() == optionsetText.ToLower())
+                    {
+                        optionSetValue = optionMetadata.Value.Value.ToString(); ;
+                    }
+                }
+                return optionSetValue;
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+            
+        }
+
+        /// <summary>
+        /// This method is used to fetch an optionset value based on optionset text.
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <param name="attributeName"></param>
+        /// <param name="optionsetText"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetOptionSetValue(string entityName, string attributeName, string optionsetText, IOrganizationService service)
+        {
+            
+            try
+            {
+                string optionSetValue = null;
+                RetrieveAttributeRequest retrieveAttributeRequest = new RetrieveAttributeRequest();
+                retrieveAttributeRequest.EntityLogicalName = entityName;
+                retrieveAttributeRequest.LogicalName = attributeName;
+                retrieveAttributeRequest.RetrieveAsIfPublished = true;
+                RetrieveAttributeResponse retrieveAttributeResponse =
+                  (RetrieveAttributeResponse)service.Execute(retrieveAttributeRequest);
+                PicklistAttributeMetadata picklistAttributeMetadata =
+                  (PicklistAttributeMetadata)retrieveAttributeResponse.AttributeMetadata;
+                OptionSetMetadata optionsetMetadata = picklistAttributeMetadata.OptionSet;
+                foreach (OptionMetadata optionMetadata in optionsetMetadata.Options)
+                {
+                    if (optionMetadata.Label.UserLocalizedLabel.Label.ToLower() == optionsetText.ToLower())
+                    {
+                        optionSetValue = optionMetadata.Value.Value.ToString(); ;
+                    }
+                }
+                return optionSetValue;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+            
+        }
+
+        /// <summary>
+        /// This method is used to fetch the GUID of the record.
+        /// </summary>
+        /// <param name="strIncomingEdwKey"></param>
+        /// <param name="strEntityName"></param>
+        /// <param name="strEcrmAttributeName"></param>
+        /// <param name="Service"></param>
+        /// <returns></returns>
+        ///
+        public Guid GetGUID(string strIncomingValue, string strEntityName, string strEcrmAttributeName, IOrganizationService Service)
+        {
+            
+            try
+            {
+                Guid guiRecordId = Guid.Empty;
+                QueryByAttribute guidQuery = new QueryByAttribute();
+                guidQuery.EntityName = strEntityName;
+                guidQuery.Attributes.AddRange(strEcrmAttributeName);
+                guidQuery.Values.AddRange(strIncomingValue);
+                EntityCollection retRecords = Service.RetrieveMultiple(guidQuery);
+                if (retRecords.Entities.Count > 0)
+                {
+                    guiRecordId = retRecords.Entities[0].Id;
+                }
+                return guiRecordId;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+            
+        }
+
+        /// <summary>
+        /// This method is to used to fetch a value from a record.
+        /// </summary>
+        /// <param name="EntityName"></param>
+        /// <param name="AttributeName"></param>
+        /// <param name="AttributeValue"></param>
+        /// <param name="columnset"></param>
+        /// <param name="_service"></param>
+        /// <returns></returns>
+        public string GetDataFromRecord(string strEntityName, string strAttributeName, string strAttributeValue, string[] strcolumnset, IOrganizationService _service)
+        {
+            try
+            {
+                string dataValue = null;
+                QueryByAttribute Query = new QueryByAttribute(strEntityName);
+                Query.ColumnSet = new ColumnSet(strcolumnset);
+                Query.AddAttributeValue(strAttributeName, strAttributeValue);
+                EntityCollection recordData = _service.RetrieveMultiple(Query);
+                if (recordData != null && recordData.Entities.Count > 0)
+                {
+                    Entity record = recordData.Entities[0];
+                    if (record != null && record.Attributes.Contains(strcolumnset[0]))
+                        dataValue = record[strcolumnset[0]].ToString();
+                }
+                return dataValue;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is used to fetch the entity containing the column set values requested.
+        /// </summary>
+        /// <param name="strEntityName"></param>
+        /// <param name="strAttributeName"></param>
+        /// <param name="strAttributeValue"></param>
+        /// <param name="strcolumnset"></param>
+        /// <param name="_service"></param>
+        /// <returns></returns>
+        public Entity GetEntityFromRecord(string strEntityName, string strAttributeName, string strAttributeValue, string[] strcolumnset, IOrganizationService _service)
+        {
+            try
+            {
+                Entity record = null;
+                QueryByAttribute Query = new QueryByAttribute(strEntityName);
+                Query.ColumnSet = new ColumnSet(strcolumnset);
+                Query.AddAttributeValue(strAttributeName, strAttributeValue);
+                EntityCollection recordData = _service.RetrieveMultiple(Query);
+                if (recordData != null && recordData.Entities.Count > 0)
+                {
+                    record = recordData.Entities[0];
+
+                }
+                return record;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is used to retrieve an entity collection containing the column set values requested.
+        /// </summary>
+        /// <param name="strEntityName"></param>
+        /// <param name="strAttributeName"></param>
+        /// <param name="strAttributeValue"></param>
+        /// <param name="strcolumnset"></param>
+        /// <param name="_service"></param>
+        /// <returns></returns>
+        public EntityCollection GetEntityCollection(string strEntityName, string strAttributeName, string strAttributeValue, string[] strcolumnset, IOrganizationService _service)
+        {
+            try
+            {
+                EntityCollection collection = null;
+                QueryByAttribute Query = new QueryByAttribute(strEntityName);
+                Query.ColumnSet = new ColumnSet(strcolumnset);
+                Query.AddAttributeValue(strAttributeName, strAttributeValue);
+                EntityCollection recordData = _service.RetrieveMultiple(Query);
+                if (recordData != null && recordData.Entities.Count > 0)
+                {
+                    collection = recordData;
+
+                }
+
+                return collection;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        ///  This method is used to set the status to Active.
+        /// </summary>
+        /// <param name="contactGuid"></param>
+        /// <param name="service"></param>
+        public void SetStatus(Guid guiEntityid, string strEntityName, IOrganizationService service)
+        {
+            try
+            {
+                // Create the Request Object
+                SetStateRequest updateStatus = new SetStateRequest();
+                // Set the Request Object's Properties
+                updateStatus.State = new OptionSetValue(0);
+                updateStatus.Status = new OptionSetValue(1);
+                // Point the Request to the case whose state is being changed
+                updateStatus.EntityMoniker = new EntityReference(strEntityName, guiEntityid);
+                // Execute the Request
+                SetStateResponse stateSet = (SetStateResponse)service.Execute(updateStatus);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method will retrieves all of the attributes associated with the Entity
+        /// </summary>
+        /// <param name="service"></param>
+        /// <param name="strEntityLogicalName"></param>
+        /// <param name="guidEntityId"></param>
+        /// <returns></returns>
+        public Entity RetrieveEntityById(IOrganizationService service, string strEntityLogicalName, Guid guidEntityId)
+        {
+            try
+            {
+                Entity RetrievedEntityById = null;
+                RetrievedEntityById = service.Retrieve(strEntityLogicalName, guidEntityId, new ColumnSet(true));
+                return RetrievedEntityById;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method will fetch the display name of the Entity.
+        /// </summary>
+        /// <param name="entitylogicalname"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetEntityName(string entitylogicalname, IOrganizationService service)
+        {
+            try
+            {
+                string entityDisplayName = null;
+                Entity entity = new Entity(entitylogicalname);
+                RetrieveEntityRequest EntityRequest = new RetrieveEntityRequest();
+                EntityRequest.LogicalName = entity.LogicalName;
+                EntityRequest.EntityFilters = EntityFilters.All;
+                RetrieveEntityResponse responseent = (RetrieveEntityResponse)service.Execute(EntityRequest);
+                EntityMetadata ent = (EntityMetadata)responseent.EntityMetadata;
+                entityDisplayName = responseent.EntityMetadata.DisplayName.LocalizedLabels[0].Label;
+                return entityDisplayName;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method will fetch the object type code of the Entity.
+        /// </summary>
+        /// <param name="entitylogicalname"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetObjectTypeCode(string entitylogicalname, IOrganizationService service)
+        {
+            try
+            {
+                string ObjectTypeCode = null;
+                Entity entity = new Entity(entitylogicalname);
+                RetrieveEntityRequest EntityRequest = new RetrieveEntityRequest();
+                EntityRequest.LogicalName = entity.LogicalName;
+                EntityRequest.EntityFilters = EntityFilters.All;
+                RetrieveEntityResponse responseent = (RetrieveEntityResponse)service.Execute(EntityRequest);
+                EntityMetadata ent = (EntityMetadata)responseent.EntityMetadata;
+                ObjectTypeCode = ent.ObjectTypeCode.ToString();
+                return ObjectTypeCode;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+
+        }
+
+        /// <summary>
+        /// This method is used to fetch an optionset text based on optionset value.
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <param name="attributeName"></param>
+        /// <param name="optionsetValue"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetOptionSetText(string entityName, string attributeName, int optionsetValue, IOrganizationService service)
+        {
+
+            try
+            {
+                string optionSetText = null;
+                RetrieveAttributeRequest retrieveAttributeRequest = new RetrieveAttributeRequest();
+                retrieveAttributeRequest.EntityLogicalName = entityName;
+                retrieveAttributeRequest.LogicalName = attributeName;
+                retrieveAttributeRequest.RetrieveAsIfPublished = true;
+                RetrieveAttributeResponse retrieveAttributeResponse =
+                  (RetrieveAttributeResponse)service.Execute(retrieveAttributeRequest);
+                PicklistAttributeMetadata picklistAttributeMetadata =
+                  (PicklistAttributeMetadata)retrieveAttributeResponse.AttributeMetadata;
+                OptionSetMetadata optionsetMetadata = picklistAttributeMetadata.OptionSet;
+                foreach (OptionMetadata optionMetadata in optionsetMetadata.Options)
+                {
+                    if (optionMetadata.Value.Value == optionsetValue)
+                    {
+                        optionSetText = optionMetadata.Label.UserLocalizedLabel.Label.ToString();
+                    }
+                }
+                return optionSetText;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is used to fetch a global optionset text based on an optionset value.
+        /// </summary>
+        /// <param name="attributeName"></param>
+        /// <param name="optionSetValue"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetGlobalOptionSetText(string attributeName, int optionSetValue, IOrganizationService service)
+        {
+            try
+            {
+                string optionSetText = null;
+
+                RetrieveOptionSetRequest retrieveOptionSetRequest = new RetrieveOptionSetRequest();
+                retrieveOptionSetRequest.Name = attributeName;
+                retrieveOptionSetRequest.RetrieveAsIfPublished = true;
+
+                RetrieveOptionSetResponse retrieveOptionSetResponse =
+                  (RetrieveOptionSetResponse)service.Execute(retrieveOptionSetRequest);
+                OptionSetMetadata picklistAttributeMetadata =
+                  (OptionSetMetadata)retrieveOptionSetResponse.OptionSetMetadata;
+
+                OptionMetadataCollection optionsetMetadata = picklistAttributeMetadata.Options;
+
+                foreach (OptionMetadata optionMetadata in optionsetMetadata)
+                {
+                    if (optionMetadata.Value.Value == optionSetValue)
+                    {
+                        optionSetText = optionMetadata.Label.UserLocalizedLabel.Label.ToString();
+                    }
+
+                }
+                return optionSetText;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is used to fetch two options text based on the two options value.
+        /// </summary>
+        /// <param name="entityName"></param>
+        /// <param name="attributeName"></param>
+        /// <param name="optionSetValue"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public string GetTwoOptionsText(string entityName, string attributeName, int optionSetValue, IOrganizationService service)
+        {
+            try
+            {
+                string optionSetText = null;
+
+                RetrieveAttributeRequest retrieveAttributeRequest = new RetrieveAttributeRequest();
+                retrieveAttributeRequest.EntityLogicalName = entityName;
+                retrieveAttributeRequest.LogicalName = attributeName;
+                retrieveAttributeRequest.RetrieveAsIfPublished = true;
+
+                RetrieveAttributeResponse retrieveAttributeResponse =
+                  (RetrieveAttributeResponse)service.Execute(retrieveAttributeRequest);
+
+                if (retrieveAttributeResponse.AttributeMetadata.AttributeType.ToString().ToLower() == "boolean")
+                {
+                    BooleanAttributeMetadata picklistAttributeMetadata =
+                  (BooleanAttributeMetadata)retrieveAttributeResponse.AttributeMetadata;
+                    BooleanOptionSetMetadata optionsetMetadata = picklistAttributeMetadata.OptionSet;
+                    if (optionsetMetadata.FalseOption.Value == optionSetValue)
+                    {
+                        optionSetText = optionsetMetadata.FalseOption.Label.UserLocalizedLabel.Label.ToString();
+                    }
+                    if (optionsetMetadata.TrueOption.Value == optionSetValue)
+                    {
+                        optionSetText = optionsetMetadata.TrueOption.Label.UserLocalizedLabel.Label.ToString();
+                    }
+                }
+                return optionSetText;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is used to fetch the GUID of the Routing Rule Set.
+        /// </summary>
+        /// <param name="routingRuleName"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public Guid GetRoutingRule(string routingRuleName, IOrganizationService service)
+        {
+            try
+            {
+                Guid routingRule = Guid.Empty;
+                QueryExpression query = new QueryExpression();
+                query.EntityName = "routingrule";
+                query.ColumnSet.AllColumns = true;
+
+                ConditionExpression nameCondition = new ConditionExpression();
+                nameCondition.AttributeName = "name";
+                nameCondition.Operator = ConditionOperator.Equal;
+                nameCondition.Values.Add(routingRuleName);
+
+                FilterExpression filter = new FilterExpression();
+                filter.AddCondition(nameCondition);
+
+                query.Criteria = filter;
+
+                var routingrules = service.RetrieveMultiple(query);
+
+                routingRule = routingrules.Entities[0].Id;
+                return routingRule;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method will return the Queue entity that matches given Queue name.
+        /// </summary>
+        /// <param name="title"></param>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public Entity GetQueue(string title, IOrganizationService service)
+        {
+            
+            try
+            {
+                Entity queue = null;
+                QueryExpression query = new QueryExpression();
+
+                // Setup the query for the template entity
+                query.EntityName = "queue";
+
+                // Return all columns
+                query.ColumnSet.AllColumns = true;
+                query.Criteria = new FilterExpression();
+                query.Criteria.FilterOperator = LogicalOperator.And;
+
+                // Create the title condition
+                ConditionExpression condition1 = new ConditionExpression();
+                condition1.AttributeName = "name";
+                condition1.Operator = ConditionOperator.Equal;
+                condition1.Values.Add(title);
+
+                query.Criteria.Conditions.Add(condition1);
+
+                // Execute the query and return the result
+                EntityCollection entityColl = service.RetrieveMultiple(query);
+
+                if (entityColl.Entities.Count > 0)
+                {
+                    queue = entityColl.Entities[0];
+                }
+                return queue;
+            }
+            catch(Exception ex)
+            {
+                throw;
+            }
+            
+        }
+
+        /// <summary>
+        /// This method will assign a new owner to the entity.
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="entityName"></param>
+        /// <param name="entityID"></param>
+        /// <param name="service"></param>
+        public void AssignOwner(string username, EntityReference entity, IOrganizationService service)
+        {
+            try
+            {
+                Guid userID = new Guid();
+                userID = GetGUID(username, "systemuser", "domainname", service);
+
+                AssignRequest assign = new AssignRequest
+                {
+                    Assignee = new EntityReference("systemuser", userID),
+                    Target = entity
+                };
+
+                service.Execute(assign);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+    }
+}
+ 
